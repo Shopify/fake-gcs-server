@@ -27,18 +27,23 @@ func newBucketInMemory(name string, versioningEnabled bool) bucketInMemory {
 	return bucketInMemory{Bucket{name, versioningEnabled, time.Now()}, []Object{}, []Object{}}
 }
 
-func (bm *bucketInMemory) addObject(obj Object) {
+func (bm *bucketInMemory) addObject(obj Object, conditions Conditions) error {
 	obj.Generation = getNewGenerationIfZero(obj.Generation)
+
 	index := findObject(obj, bm.activeObjects, false)
 	if index >= 0 {
 		if bm.VersioningEnabled {
 			bm.activeObjects[index].Deleted = time.Now().Format(time.RFC3339)
 			bm.cpToArchive(bm.activeObjects[index])
 		}
+		if err := validWithConditions(bm.activeObjects[index], conditions); err != nil {
+			return err
+		}
 		bm.activeObjects[index] = obj
 	} else {
 		bm.activeObjects = append(bm.activeObjects, obj)
 	}
+	return nil
 }
 
 func getNewGenerationIfZero(generation int64) int64 {
@@ -106,7 +111,7 @@ func NewStorageMemory(objects []Object) Storage {
 	for _, o := range objects {
 		s.CreateBucket(o.BucketName, false)
 		bucket := s.buckets[o.BucketName]
-		bucket.addObject(o)
+		bucket.addObject(o, Conditions{})
 		s.buckets[o.BucketName] = bucket
 	}
 	return s
@@ -154,14 +159,17 @@ func (s *StorageMemory) getBucketInMemory(name string) (bucketInMemory, error) {
 }
 
 // CreateObject stores an object
-func (s *StorageMemory) CreateObject(obj Object) error {
+func (s *StorageMemory) CreateObject(obj Object, conditions Conditions) error {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	bucketInMemory, err := s.getBucketInMemory(obj.BucketName)
 	if err != nil {
 		bucketInMemory = newBucketInMemory(obj.BucketName, false)
 	}
-	bucketInMemory.addObject(obj)
+	err = bucketInMemory.addObject(obj, conditions)
+	if err != nil {
+		return err
+	}
 	s.buckets[obj.BucketName] = bucketInMemory
 	return nil
 }

@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
+	"github.com/fsouza/fake-gcs-server/internal/backend"
 	"github.com/gorilla/mux"
 )
 
@@ -48,6 +49,7 @@ func (s *Server) insertObject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	uploadType := r.URL.Query().Get("uploadType")
+
 	switch uploadType {
 	case "media":
 		s.simpleUpload(bucketName, w, r)
@@ -84,7 +86,7 @@ func (s *Server) simpleUpload(bucketName string, w http.ResponseWriter, r *http.
 		Md5Hash:         encodedMd5Hash(data),
 		ACL:             getObjectACL(predefinedACL),
 	}
-	err = s.createObject(obj)
+	err = s.createObject(obj, requestToConditions(w, r))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -190,7 +192,7 @@ func (s *Server) multipartUpload(bucketName string, w http.ResponseWriter, r *ht
 		Md5Hash:         encodedMd5Hash(content),
 		ACL:             getObjectACL(predefinedACL),
 	}
-	err = s.createObject(obj)
+	err = s.createObject(obj, requestToConditions(w, r))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -300,7 +302,7 @@ func (s *Server) uploadFileContent(w http.ResponseWriter, r *http.Request) {
 	}
 	if commit {
 		s.uploads.Delete(uploadID)
-		err = s.createObject(obj)
+		err = s.createObject(obj, requestToConditions(w, r))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -399,4 +401,19 @@ func generateUploadID() (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%x", raw[:]), nil
+}
+
+func requestToConditions(w http.ResponseWriter, r *http.Request) backend.Conditions {
+	conditions := backend.Conditions{}
+	genMatchCondition := r.URL.Query().Get("ifGenerationMatch")
+
+	if genMatchCondition != "" {
+		if match, err := strconv.ParseInt(genMatchCondition, 10, 64); err == nil {
+			conditions.GenerationMatch = match
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	}
+
+	return conditions
 }

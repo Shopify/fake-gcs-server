@@ -43,7 +43,7 @@ func NewStorageFS(objects []Object, rootDir string) (Storage, error) {
 	}
 	s := &StorageFS{rootDir: rootDir}
 	for _, o := range objects {
-		err := s.CreateObject(o)
+		err := s.CreateObject(o, Conditions{})
 		if err != nil {
 			return nil, err
 		}
@@ -102,10 +102,11 @@ func (s *StorageFS) GetBucket(name string) (Bucket, error) {
 }
 
 // CreateObject stores an object
-func (s *StorageFS) CreateObject(obj Object) error {
-	if obj.Generation > 0 {
+func (s *StorageFS) CreateObject(obj Object, conditions Conditions) error {
+	if obj.Generation > 0 || !emptyConditions(conditions) {
 		return errors.New("not implemented: fs storage type does not support objects generation yet")
 	}
+
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	err := s.createBucket(obj.BucketName)

@@ -10,7 +10,7 @@ type Storage interface {
 	CreateBucket(name string, versioningEnabled bool) error
 	ListBuckets() ([]Bucket, error)
 	GetBucket(name string) (Bucket, error)
-	CreateObject(obj Object) error
+	CreateObject(obj Object, conditions Conditions) error
 	ListObjects(bucketName string, versions bool) ([]Object, error)
 	GetObject(bucketName, objectName string) (Object, error)
 	GetObjectWithGeneration(bucketName, objectName string, generation int64) (Object, error)

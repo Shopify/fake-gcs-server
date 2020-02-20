@@ -61,15 +61,15 @@ func (o *objectList) Swap(i int, j int) {
 //
 // If the bucket within the object doesn't exist, it also creates it. If the
 // object already exists, it overrides the object.
-func (s *Server) CreateObject(obj Object) {
-	err := s.createObject(obj)
+func (s *Server) CreateObject(obj Object, conditions backend.Conditions) {
+	err := s.createObject(obj, conditions)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (s *Server) createObject(obj Object) error {
-	return s.backend.CreateObject(toBackendObjects([]Object{obj})[0])
+func (s *Server) createObject(obj Object, conditions backend.Conditions) error {
+	return s.backend.CreateObject(toBackendObjects([]Object{obj})[0], conditions)
 }
 
 // ListObjects returns a sorted list of objects that match the given criteria,
@@ -290,7 +290,7 @@ func (s *Server) setObjectACL(w http.ResponseWriter, r *http.Request) {
 		Role:   role,
 	}}
 
-	s.CreateObject(obj)
+	s.CreateObject(obj, backend.Conditions{})
 
 	response := newACLListResponse(obj)
 	json.NewEncoder(w).Encode(response)
@@ -329,7 +329,7 @@ func (s *Server) rewriteObject(w http.ResponseWriter, r *http.Request) {
 		ACL:         obj.ACL,
 		Metadata:    obj.Metadata,
 	}
-	s.CreateObject(newObject)
+	s.CreateObject(newObject, requestToConditions(w, r))
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(newObjectRewriteResponse(newObject))
 }
