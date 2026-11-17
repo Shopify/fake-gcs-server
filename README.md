@@ -1,3 +1,5 @@
+> **This repository is no longer maintained.** It has been archived by Shopify and receives no updates or security fixes.
+
 # fake-gcs-server
 
 [![Build Status](https://github.com/fsouza/fake-gcs-server/workflows/Build/badge.svg)](https://github.com/fsouza/fake-gcs-server/actions?query=branch:master+workflow:Build)
